@@ -21,6 +21,8 @@ export class DiscordManager {
   public async init(onMessageCallback, canServerNodeRunDiscord = true): Promise<void> {
     if(!process.env.DISCORD_SECRET || !canServerNodeRunDiscord) return;
 
+    await this.logger.init();
+
     this.onMessageCallback = (msg) => {
       this.syncDiscordGuildChannel();
       onMessageCallback(msg);
