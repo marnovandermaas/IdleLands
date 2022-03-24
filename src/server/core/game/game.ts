@@ -223,11 +223,15 @@ export class Game implements IGame {
 
     timer.stopTimer(timerName);
 
-    timer.dumpTimers();
+    timer.dumpTimers(this.reportTimers);
 
     setTimeout(() => {
       this.loop();
     }, GAME_DELAY);
+  }
+
+  private reportTimers(...args) {
+    this.logger.log('Game', 'Timer Report', ...args);
   }
 
   public updatePlayer(player: Player) {
