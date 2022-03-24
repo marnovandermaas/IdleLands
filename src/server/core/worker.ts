@@ -28,7 +28,7 @@ export class GameWorker extends SCWorker {
 
     const game = new Game();
     await game.init(scServer, this.id);
-    game.logger.log('worker', logstr);
+    game.logger.log('Worker', logstr);
 
     const environment = this.options.environment;
     const app = express();
