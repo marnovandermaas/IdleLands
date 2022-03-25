@@ -1,5 +1,5 @@
 import { Singleton, Inject } from 'typescript-ioc';
-import { LoggerTimer } from 'logger-timer';
+import { LoggerTimer } from '../logger-timer2';
 
 import { DatabaseManager } from './database-manager';
 import { PlayerManager } from './player-manager';
@@ -223,15 +223,12 @@ export class Game implements IGame {
 
     timer.stopTimer(timerName);
 
-    timer.dumpTimers(this.reportTimers);
+    timer.dumpTimers(this.logger.log, this);
+    timer.dumpTimers();
 
     setTimeout(() => {
       this.loop();
     }, GAME_DELAY);
-  }
-
-  private reportTimers(...args) {
-    this.logger.log('Game', 'Timer Report', ...args);
   }
 
   public updatePlayer(player: Player) {
