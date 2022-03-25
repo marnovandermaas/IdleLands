@@ -158,7 +158,7 @@ export class Game implements IGame {
 
   public loop() {
     const timer = new LoggerTimer({
-      isActive: process.env.DEBUG_TIMERS,
+      isActive: JSON.parse(process.env.DEBUG_TIMERS.toLowerCase()),
       dumpThreshold: process.env.NODE_ENV === 'production' ? 50 : 1
     });
 
@@ -223,7 +223,7 @@ export class Game implements IGame {
 
     timer.stopTimer(timerName);
 
-    timer.dumpTimers(this.logger.log, this);
+    timer.dumpTimers(this.logger.log, this.logger);
     timer.dumpTimers();
 
     setTimeout(() => {
