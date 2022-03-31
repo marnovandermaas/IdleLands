@@ -72,6 +72,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#checkIfPlayerExists`, e);
+      return null;
     }
   }
 
@@ -88,7 +89,8 @@ export class DatabaseManager {
       return player;
 
     } catch(e) {
-      this.logger.error(`DatabaseManager#createPlayer`);
+      this.logger.error(`DatabaseManager#createPlayer`, e);
+      return null;
     }
   }
 
@@ -113,21 +115,36 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadPlayer`, e);
+      return null;
     }
   }
 
   public async findPlayerWithDiscordTag(discordTag: string): Promise<Player> {
     if(!this.connection) return null;
-    return this.connection.manager.findOne(Player, { discordTag });
+
+    try {
+      return this.connection.manager.findOne(Player, { discordTag });
+
+    } catch(e) {
+      this.logger.error(`DatabaseManager#findPlayerWithDiscordTag`, e);
+      return null;
+    }
   }
 
   public async findPlayerWithIL3Name(il3CharName: string): Promise<Player> {
     if(!this.connection) return null;
-    return this.connection.manager.findOne(Player, { il3CharName });
+
+    try {
+      return this.connection.manager.findOne(Player, { il3CharName });
+
+    } catch(e) {
+      this.logger.error(`DatabaseManager#findPlayerWithIL3Name`, e);
+      return null;
+    }
   }
 
   public async savePlayer(player: Player): Promise<void> {
-    if(!this.connection) return null;
+    if(!this.connection) return;
 
     try {
       await Promise.all(
@@ -144,7 +161,7 @@ export class DatabaseManager {
   }
 
   public async deletePlayer(player: Player): Promise<void> {
-    if(!this.connection) return null;
+    if(!this.connection) return;
 
     try {
       await Promise.all([
@@ -161,23 +178,33 @@ export class DatabaseManager {
   }
 
   public async renamePlayer(playerName: string, newName: string): Promise<any> {
-    await Promise.all([
-      SHARED_FIELDS.map(x => this.manager.updateOne(x.proto, { owner: playerName }, { $set: { owner: newName } } ))
-    ]);
+    try {
+      await Promise.all([
+        SHARED_FIELDS.map(x => this.manager.updateOne(x.proto, { owner: playerName }, { $set: { owner: newName } } ))
+      ]);
 
-    return this.manager.updateOne(Player, { name: playerName }, { $set: { name: newName } });
+      return this.manager.updateOne(Player, { name: playerName }, { $set: { name: newName } });
+    } catch (e) {
+      this.logger.error(`DatabaseManager#renamePlayer`, e);
+    }
   }
 
   public async movePlayerToNewId(playerName: string, newPlayerName: string): Promise<boolean> {
-    const curId1 = await this.manager.findOne(Player, { name: playerName });
-    const curId2 = await this.manager.findOne(Player, { name: newPlayerName });
+    try {
+      const curId1 = await this.manager.findOne(Player, { name: playerName });
+      const curId2 = await this.manager.findOne(Player, { name: newPlayerName });
 
-    if(!curId1 || !curId2) return false;
+      if(!curId1 || !curId2) return false;
 
-    await this.manager.updateOne(Player, { name: playerName }, { $set: { currentUserId: curId2.currentUserId } });
-    await this.manager.updateOne(Player, { name: newPlayerName }, { $set: { currentUserId: curId1.currentUserId } });
+      await this.manager.updateOne(Player, { name: playerName }, { $set: { currentUserId: curId2.currentUserId } });
+      await this.manager.updateOne(Player, { name: newPlayerName }, { $set: { currentUserId: curId1.currentUserId } });
 
-    return true;
+      return true;
+
+    } catch (e) {
+      this.logger.error(`DatabaseManager#movePlayerToNewId`, e);
+      return false;
+    }
   }
 
   public async verifyToken(token: string) {
@@ -188,34 +215,40 @@ export class DatabaseManager {
     if(!this.connection) return null;
     if(!this.firebase) throw new Error('No firebase admin connection!');
 
-    if(removeToken && player.authId) {
-      this.firebase.auth().deleteUser(player.authId);
+    try {
+      if(removeToken && player.authId) {
+        this.firebase.auth().deleteUser(player.authId);
 
-      player.authType = null;
-      player.authId = null;
-      player.authSyncedTo = null;
+        player.authType = null;
+        player.authId = null;
+        player.authSyncedTo = null;
+
+        this.savePlayer(player);
+
+        return true;
+      }
+
+      const decoded = await this.verifyToken(token);
+      const provider = decoded.firebase.sign_in_provider;
+      const uid = decoded.uid;
+
+      if(player.authId === uid) return false;
+
+      const existingAuthPlayer = await this.connection.manager.findOne(Player, { authId: uid });
+      if(existingAuthPlayer && existingAuthPlayer.name !== player.name) return 'Account already synced to another player.';
+
+      player.authType = provider;
+      player.authId = uid;
+      player.authSyncedTo = decoded.name || decoded.email || 'unknown';
 
       this.savePlayer(player);
 
       return true;
+
+    } catch(e) {
+      this.logger.error(`DatabaseManger#setAuthKey`, e);
+      return null;
     }
-
-    const decoded = await this.verifyToken(token);
-    const provider = decoded.firebase.sign_in_provider;
-    const uid = decoded.uid;
-
-    if(player.authId === uid) return false;
-
-    const existingAuthPlayer = await this.connection.manager.findOne(Player, { authId: uid });
-    if(existingAuthPlayer && existingAuthPlayer.name !== player.name) return 'Account already synced to another player.';
-
-    player.authType = provider;
-    player.authId = uid;
-    player.authSyncedTo = decoded.name || decoded.email || 'unknown';
-
-    this.savePlayer(player);
-
-    return true;
   }
 
   // ASSET FUNCTIONS
@@ -227,6 +260,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadAssets`, e);
+      return null;
     }
   }
 
@@ -239,6 +273,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadFestivals`, e);
+      return null;
     }
   }
 
@@ -250,6 +285,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#saveFestivals`, e);
+      return null;
     }
   }
 
@@ -262,6 +298,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGlobalQuests`, e);
+      return null;
     }
   }
 
@@ -273,6 +310,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#saveGlobalQuests`, e);
+      return null;
     }
   }
 
@@ -285,6 +323,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadSettings`, e);
+      return null;
     }
   }
 
@@ -296,6 +335,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#saveSettings`, e);
+      return null;
     }
   }
 
@@ -312,6 +352,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadBriefGuilds`, e);
+      return null;
     }
   }
 
@@ -326,6 +367,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#clearAppsInvitesForPlayer`, e);
+      return null;
     }
   }
 
@@ -337,6 +379,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#forcePlayerToJoinGuild`, e);
+      return null;
     }
   }
 
@@ -348,6 +391,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadAppsInvitesForPlayer`, e);
+      return null;
     }
   }
 
@@ -359,6 +403,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadAppsInvitesForGuild`, e);
+      return null;
     }
   }
 
@@ -373,6 +418,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#applyInviteToGuild`, e);
+      return null;
     }
   }
 
@@ -384,6 +430,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGuilds`, e);
+      return null;
     }
   }
 
@@ -395,6 +442,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGuild`, e);
+      return null;
     }
   }
 
@@ -406,6 +454,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#saveGuild`, e);
+      return null;
     }
   }
 
@@ -417,6 +466,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGuildInvitesForPlayer`, e);
+      return null;
     }
   }
 
@@ -428,6 +478,7 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGuildInvitesForGuildName`, e);
+      return null;
     }
   }
 
