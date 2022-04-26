@@ -38,6 +38,7 @@ export class DatabaseManager {
     this.manager = getMongoManager();
 
     this.updateOldData();
+    this.manager.watch(Player);
     this.logger.log('DatabaseManager', 'Initialized');
   }
 
@@ -432,10 +433,8 @@ export class DatabaseManager {
   }
 
   public async getStats(): Promise<CollStats> {
-    if(!this.connection) return null;
-
     try {
-      return this.connection.manager.stats(Player);
+      return await this.manager.stats(Player);
 
     } catch(e) {
       this.logger.error(`DatabaseManager#getStats`, e);
