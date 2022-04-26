@@ -1,6 +1,6 @@
 
 import { Singleton, Inject } from 'typescript-ioc';
-import { Connection, createConnection, getConnectionOptions, MongoEntityManager, getMongoManager } from 'typeorm';
+import { Connection, createConnection, getConnectionOptions, MongoEntityManager, getMongoManager, CollStats } from 'typeorm';
 import { extend, pick } from 'lodash';
 import { decompress } from 'lzutf8';
 
@@ -428,6 +428,17 @@ export class DatabaseManager {
 
     } catch(e) {
       this.logger.error(`DatabaseManager#loadGuildInvitesForGuildName`, e);
+    }
+  }
+
+  public async getStats(): Promise<CollStats> {
+    if(!this.connection) return null;
+
+    try {
+      return this.connection.manager.stats(Player);
+
+    } catch(e) {
+      this.logger.error(`DatabaseManager#getStats`, e);
     }
   }
 
