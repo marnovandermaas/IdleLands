@@ -204,7 +204,7 @@ export class Game implements IGame {
     if((this.ticks % MONGO_STAT_TICKS) === 0) {
       console.log(this.databaseManager.getStats());
     }
-    this.timer.startTimer('Database Stats');
+    this.timer.stopTimer('Database Stats');
 
     this.timer.startTimer('Town Crier');
     if((this.ticks % 2) === 0) {

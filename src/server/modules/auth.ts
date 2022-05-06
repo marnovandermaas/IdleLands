@@ -192,9 +192,10 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
 
     const playerNumber = this.game.playerManager.allPlayers.length + 1;
     const maskedId = userId.substring(0,8);
+    const currentTime = (new Date()).toISOString();
 
     if(this.playerName) {
-      const timerName = `Check Player #${playerNumber}: ${maskedId}`;
+      const timerName = `Check Player #${playerNumber}: ${maskedId} ${currentTime}`;
       //this.game.logger.log('Auth', timerName);
       this.timer.startTimer(timerName);
       const characterPreObj = this.game.playerManager.getPlayer(this.playerName);
@@ -212,7 +213,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
     // we check for an auth id first because if a token is specified, we need to look for that
     if(authToken) {
       try {
-        const timerName = `Verify Token #${playerNumber}: ${maskedId}`;
+        const timerName = `Verify Token #${playerNumber}: ${maskedId} ${currentTime}`;
         //this.game.logger.log('Auth', timerName);
         this.game.timer.startTimer(timerName);
         const decodedToken = await this.game.databaseManager.verifyToken(authToken);
@@ -224,7 +225,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
       }
     }
 
-    const checkTimerName = `Check Character #${playerNumber}: ${maskedId}`;
+    const checkTimerName = `Check Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', checkTimerName);
     this.game.timer.startTimer(checkTimerName);
     const characterCheck = await this.game.databaseManager.checkIfPlayerExists(searchOpts);
@@ -234,7 +235,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
       return this.gameError('Your character does not exist.');
     }
 
-    const checkLoggedInTimerName = `Check Logged In Character #${playerNumber}: ${maskedId}`;
+    const checkLoggedInTimerName = `Check Logged In Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', checkLoggedInTimerName);
     this.game.timer.startTimer(checkLoggedInTimerName);
     const loggedInPlayer = this.game.playerManager.getPlayer(characterCheck.name);
@@ -252,7 +253,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
     }
 
     // we have passed all of the checks, so lets hit the database again, why not?
-    const loadTimerName = `Load Character #${playerNumber}: ${maskedId}`;
+    const loadTimerName = `Load Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', loadTimerName);
     this.game.timer.startTimer(loadTimerName);
     const character = await this.game.databaseManager.loadPlayer(this.game, searchOpts);
@@ -260,7 +261,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
     if(!character) return this.gameError('Your player could not be loaded for some reason.');
 
     // Check if that IP is banned
-    const banTimerCheckName = `Ban Check #${playerNumber}: ${maskedId}`;
+    const banTimerCheckName = `Ban Check #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', banTimerCheckName);
     this.game.timer.startTimer(banTimerCheckName);
     const banned = await this.game.databaseManager.checkForIPBan(this.socketAddress());
@@ -281,7 +282,7 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
 
     const setCharacter = loggedInPlayer || character;
 
-    const finalizeCheckName = `Finalize #${playerNumber}: ${maskedId}`;
+    const finalizeCheckName = `Finalize #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', finalizeCheckName);
     this.game.timer.startTimer(finalizeCheckName);
     this.game.playerManager.addPlayer(setCharacter, this);
@@ -296,6 +297,6 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
       setCharacter.tryToDoNewCharacter();
     }, 500);
 
-    this.game.logger.log('Auth', `Successfully logged in #${playerNumber}: ${maskedId} (${character.name})`);
+    this.game.logger.log('Auth', `Successfully logged in #${playerNumber}: ${maskedId} ${currentTime} (${character.name})`);
   }
 }
