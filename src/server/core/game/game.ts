@@ -38,7 +38,7 @@ import { GuildManager } from './guild-manager';
 
 const GAME_DELAY = process.env.GAME_DELAY ? +process.env.GAME_DELAY : 5000;
 const SAVE_TICKS = process.env.SAVE_DELAY ? +process.env.SAVE_DELAY : (process.env.NODE_ENV === 'production' ? 15 : 10);
-const MONGO_STAT_TICKS = process.env.NODE_ENV === 'production' ? 1000 : 100;
+const MONGO_STAT_TICKS = process.env.NODE_ENV === 'production' ? 1000 : 10;
 
 @Singleton
 export class Game implements IGame {
@@ -201,7 +201,7 @@ export class Game implements IGame {
 
     timer.startTimer('Database Stats');
     if((this.ticks % MONGO_STAT_TICKS) === 0) {
-      console.log(this.databaseManager.getStats());
+      this.logger.log('Game', this.databaseManager.getStats());
     }
     timer.stopTimer('Database Stats');
 
