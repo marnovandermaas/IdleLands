@@ -434,7 +434,7 @@ export class DatabaseManager {
 
   public async logStats() {
     try {
-      stats = await this.manager.stats(Player);
+      let stats = await this.manager.stats(Player);
 
       this.logger.log(stats);
 
