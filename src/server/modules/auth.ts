@@ -1,3 +1,4 @@
+import { LoggerTimer } from 'logger-timer';
 
 import * as uuid from 'uuid/v4';
 import { isString } from 'lodash';
@@ -194,14 +195,19 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
     const maskedId = userId.substring(0,8);
     const currentTime = (new Date()).toISOString();
 
+    const timer = new LoggerTimer({
+      isActive: process.env.DEBUG_TIMERS,
+      dumpThreshold: process.env.NODE_ENV === 'production' ? 50 : 1
+    });
+
     if(this.playerName) {
       const timerName = `Check Player #${playerNumber}: ${maskedId} ${currentTime}`;
       //this.game.logger.log('Auth', timerName);
-      this.timer.startTimer(timerName);
+      timer.startTimer(timerName);
       const characterPreObj = this.game.playerManager.getPlayer(this.playerName);
       this.emit(ServerEventName.CharacterSync, characterPreObj);
       this.emit(ServerEventName.PlayGame);
-      this.timer.stopTimer(timerName);
+      timer.stopTimer(timerName);
 
       return this.gameError('You are already connected!');
     }
@@ -215,10 +221,10 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
       try {
         const timerName = `Verify Token #${playerNumber}: ${maskedId} ${currentTime}`;
         //this.game.logger.log('Auth', timerName);
-        this.game.timer.startTimer(timerName);
+        timer.startTimer(timerName);
         const decodedToken = await this.game.databaseManager.verifyToken(authToken);
         searchOpts = { authId: decodedToken.uid };
-        this.game.timer.stopTimer(timerName);
+        timer.stopTimer(timerName);
       } catch(e) {
         this.gameError('Auth token could not be decoded correctly.');
         return;
@@ -227,9 +233,9 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
 
     const checkTimerName = `Check Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', checkTimerName);
-    this.game.timer.startTimer(checkTimerName);
+    timer.startTimer(checkTimerName);
     const characterCheck = await this.game.databaseManager.checkIfPlayerExists(searchOpts);
-    this.game.timer.stopTimer(checkTimerName);
+    timer.stopTimer(checkTimerName);
     if(!characterCheck) {
       if(userId && relogin && !sessionId) return;
       return this.gameError('Your character does not exist.');
@@ -237,10 +243,10 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
 
     const checkLoggedInTimerName = `Check Logged In Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', checkLoggedInTimerName);
-    this.game.timer.startTimer(checkLoggedInTimerName);
+    timer.startTimer(checkLoggedInTimerName);
     const loggedInPlayer = this.game.playerManager.getPlayer(characterCheck.name);
     const loggedInFromAnotherServerPlayer = this.game.playerManager.getSimplePlayer(characterCheck.name);
-    this.game.timer.stopTimer(checkLoggedInTimerName);
+    timer.stopTimer(checkLoggedInTimerName);
 
     // check first the logged in player to see if it exists, and if we match
     if(loggedInPlayer && loggedInPlayer.loggedIn && sessionId !== loggedInPlayer.sessionId) {
@@ -255,17 +261,17 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
     // we have passed all of the checks, so lets hit the database again, why not?
     const loadTimerName = `Load Character #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', loadTimerName);
-    this.game.timer.startTimer(loadTimerName);
+    timer.startTimer(loadTimerName);
     const character = await this.game.databaseManager.loadPlayer(this.game, searchOpts);
-    this.game.timer.stopTimer(loadTimerName);
+    timer.stopTimer(loadTimerName);
     if(!character) return this.gameError('Your player could not be loaded for some reason.');
 
     // Check if that IP is banned
     const banTimerCheckName = `Ban Check #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', banTimerCheckName);
-    this.game.timer.startTimer(banTimerCheckName);
+    timer.startTimer(banTimerCheckName);
     const banned = await this.game.databaseManager.checkForIPBan(this.socketAddress());
-    this.game.timer.stopTimer(banTimerCheckName);
+    timer.stopTimer(banTimerCheckName);
     if(banned && banned.ips.length > 0) {
       console.log(`Ban matched user: ${banned.name} (${banned._id})`);
       return this.gameError('You have been permanently banned.');
@@ -284,19 +290,20 @@ export class PlayGameEvent extends ServerSocketEvent implements ServerEvent {
 
     const finalizeCheckName = `Finalize #${playerNumber}: ${maskedId} ${currentTime}`;
     //this.game.logger.log('Auth', finalizeCheckName);
-    this.game.timer.startTimer(finalizeCheckName);
+    timer.startTimer(finalizeCheckName);
     this.game.playerManager.addPlayer(setCharacter, this);
     this.setPlayer(setCharacter);
     this.game.databaseManager.savePlayer(setCharacter);
 
     this.emit(ServerEventName.CharacterSync, setCharacter);
     this.emit(ServerEventName.PlayGame);
-    this.game.timer.stopTimer(finalizeCheckName);
+    timer.stopTimer(finalizeCheckName);
 
     setTimeout(() => {
       setCharacter.tryToDoNewCharacter();
     }, 500);
 
     this.game.logger.log('Auth', `Successfully logged in #${playerNumber}: ${maskedId} ${currentTime} (${character.name})`);
+    timer.dumpTimers((...args) => this.game.logger.log('Auth', ...args));
   }
 }
