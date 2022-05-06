@@ -436,7 +436,7 @@ export class DatabaseManager {
     try {
       let stats = await this.manager.stats(Player);
 
-      this.logger.log(stats);
+      this.logger.log('DatabaseManager', JSON.stringify(stats));
 
     } catch(e) {
       this.logger.error(`DatabaseManager#getStats`, e);
