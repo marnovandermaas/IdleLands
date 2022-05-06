@@ -44,6 +44,7 @@ const MONGO_STAT_TICKS = process.env.NODE_ENV === 'production' ? 1000 : 100;
 export class Game implements IGame {
 
   @Inject public logger: Logger;
+  @Inject public timer: LoggerTimer;
   @Inject public il3Linker: IL3Linker;
   @Inject public databaseManager: DatabaseManager;
   @Inject public assetManager: AssetManager;
@@ -87,6 +88,11 @@ export class Game implements IGame {
   public async init(scServer, id: number) {
 
     await this.logger.init();
+
+    this.timer = new LoggerTimer({
+      isActive: process.env.DEBUG_TIMERS,
+      dumpThreshold: process.env.NODE_ENV === 'production' ? 50 : 1
+    });
 
     this.logger.log('Game', 'Database manager initializing...');
     try {
@@ -160,13 +166,8 @@ export class Game implements IGame {
   }
 
   public loop() {
-    const timer = new LoggerTimer({
-      isActive: process.env.DEBUG_TIMERS,
-      dumpThreshold: process.env.NODE_ENV === 'production' ? 50 : 1
-    });
-
     const timerName = `GameLoop (${this.playerManager.allPlayers.length} players)`;
-    timer.startTimer(timerName);
+    this.timer.startTimer(timerName);
 
     this.ticks++;
 
@@ -175,7 +176,7 @@ export class Game implements IGame {
     this.playerManager.allPlayers.forEach(async player => {
       const playerTimerName = `Turn (${player.name})`;
 
-      timer.startTimer(playerTimerName);
+      this.timer.startTimer(playerTimerName);
       await player.loop(this.ticks);
 
       const charKey = player.name.slice(0, 1).toLowerCase();
@@ -189,50 +190,50 @@ export class Game implements IGame {
         // this.logger.log(`Game`, `Saving player ${player.name}...`);
         this.databaseManager.savePlayer(player);
       }
-      timer.stopTimer(playerTimerName);
+      this.timer.stopTimer(playerTimerName);
     });
 
-    timer.startTimer('Guild Save');
+    this.timer.startTimer('Guild Save');
     if((this.ticks % SAVE_TICKS) === 0) {
       this.guildManager.saveAll();
       this.guildManager.checkAll();
     }
-    timer.stopTimer('Guild Save');
+    this.timer.stopTimer('Guild Save');
 
-    timer.startTimer('Database Stats');
+    this.timer.startTimer('Database Stats');
     if((this.ticks % MONGO_STAT_TICKS) === 0) {
       console.log(this.databaseManager.getStats());
     }
-    timer.startTimer('Database Stats');
+    this.timer.startTimer('Database Stats');
 
-    timer.startTimer('Town Crier');
+    this.timer.startTimer('Town Crier');
     if((this.ticks % 2) === 0) {
       this.discordManager.dispatchCrier();
     }
-    timer.stopTimer('Town Crier');
+    this.timer.stopTimer('Town Crier');
 
-    timer.startTimer('Guild Loop');
+    this.timer.startTimer('Guild Loop');
     Object.values(this.guildManager.allGuilds).forEach(guild => guild.loop(this));
-    timer.stopTimer('Guild Loop');
+    this.timer.stopTimer('Guild Loop');
 
-    timer.startTimer('Global Quest Tick');
+    this.timer.startTimer('Global Quest Tick');
     if((this.ticks % 100) === 0) {
       this.globalQuestManager.tick();
     }
-    timer.stopTimer('Global Quest Tick');
+    this.timer.stopTimer('Global Quest Tick');
 
-    timer.startTimer('Festival Tick');
+    this.timer.startTimer('Festival Tick');
     if(this.ticks > 600) {
       this.ticks = 0;
 
       // this doesn't need to tick every tick
       this.festivalManager.tick();
     }
-    timer.stopTimer('Festival Tick');
+    this.timer.stopTimer('Festival Tick');
 
-    timer.stopTimer(timerName);
+    this.timer.stopTimer(timerName);
 
-    timer.dumpTimers((...args) => this.logger.log('Game', ...args));
+    this.timer.dumpTimers((...args) => this.logger.log('Game', ...args));
 
     setTimeout(() => {
       this.loop();
