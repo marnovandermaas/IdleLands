@@ -432,9 +432,11 @@ export class DatabaseManager {
     }
   }
 
-  public async getStats(): Promise<CollStats> {
+  public async logStats() {
     try {
-      return await this.manager.stats(Player);
+      stats = await this.manager.stats(Player);
+
+      this.logger.log(stats);
 
     } catch(e) {
       this.logger.error(`DatabaseManager#getStats`, e);

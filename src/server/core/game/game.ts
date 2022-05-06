@@ -201,7 +201,7 @@ export class Game implements IGame {
 
     timer.startTimer('Database Stats');
     if((this.ticks % MONGO_STAT_TICKS) === 0) {
-      this.logger.log('Game', this.databaseManager.getStats());
+      this.databaseManager.logStats();
     }
     timer.stopTimer('Database Stats');
 
