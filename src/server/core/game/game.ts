@@ -142,6 +142,7 @@ export class Game implements IGame {
 
     this.logger.log('Game', 'Guild manager initializing...');
     await this.guildManager.init();
+    this.logger.log('Game', `Guild manager initiated with ${this.guildManager.allGuilds.length} guilds`);
 
     this.logger.log('Game', 'World initializing...');
     await this.world.init(this.assetManager.allMapAssets);
